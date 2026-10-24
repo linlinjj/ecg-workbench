@@ -13,13 +13,46 @@ MAX_BYTES = 50 * 1024 * 1024
 MAX_VALUES = 5_000_000
 
 
+def object_value(value, name):
+    if not isinstance(value, dict):
+        raise ValueError(f"{name}必须是对象。")
+    return value
+
+
+def text_value(value, name, allow_empty=False):
+    if not isinstance(value, str) or (not allow_empty and not value.strip()):
+        raise ValueError(f"{name}必须是{'文本' if allow_empty else '非空文本'}。")
+    return value
+
+
+def integer_value(value):
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
 def validate_record(record):
+    record = object_value(record, '记录')
+    text_value(record.get('id'), '记录编号')
+    text_value(record.get('name'), '记录名称')
+    provenance = object_value(record.get('provenance'), '数据来源')
+    for key in ('dataset', 'record'):
+        text_value(provenance.get(key), '数据来源 ' + key)
+    if not integer_value(provenance.get('offsetSamples')) or provenance['offsetSamples'] < 0:
+        raise ValueError('数据来源的采样偏移必须是非负整数。')
+    for key in ('url', 'license', 'transformations', 'sha256'):
+        if key in provenance:
+            text_value(provenance[key], '数据来源 ' + key, allow_empty=True)
     fs = record.get("fs")
     if isinstance(fs, bool) or not isinstance(fs, (float, int)) or not math.isfinite(fs) or fs <= 0:
         raise ValueError("项目采样率无效。")
     channels = record.get("channels", [])
-    if not 1 <= len(channels) <= 12:
+    if not isinstance(channels, list) or not 1 <= len(channels) <= 12:
         raise ValueError("首版支持 1—12 个通道。")
+    for c in channels:
+        object_value(c, '通道')
+        text_value(c.get('name'), '通道名')
+        text_value(c.get('unit'), '通道单位')
+        if not isinstance(c.get('data'), list):
+            raise ValueError('波形必须是数值数组。')
     count = len(channels[0].get("data", []))
     if count < 2 or count * len(channels) > MAX_VALUES:
         raise ValueError("记录过短或超过 500 万个采样值。")
@@ -29,9 +62,22 @@ def validate_record(record):
             raise ValueError("通道长度必须一致，通道名和单位不能为空。")
         if not all(isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) for v in data):
             raise ValueError("波形包含空值、非数字或无效值。")
-    for a in record.get("reference", []):
-        if not isinstance(a.get("sample"), int) or not 0 <= a["sample"] < count:
+    reference = record.get('reference', [])
+    if not isinstance(reference, list):
+        raise ValueError('参考标注必须是数组。')
+    ids = set()
+    for a in reference:
+        object_value(a, '参考标注')
+        text_value(a.get('id'), '参考标注编号')
+        if a['id'] in ids:
+            raise ValueError('参考标注编号重复。')
+        ids.add(a['id'])
+        text_value(a.get('symbol'), '参考标注符号')
+        text_value(a.get('note', ''), '参考标注备注', allow_empty=True)
+        a.setdefault('note', '')
+        if not integer_value(a.get("sample")) or not 0 <= a["sample"] < count:
             raise ValueError("参考标注越界。")
+    record['reference'] = reference
     record["sampleCount"] = count
     return record
 
@@ -106,7 +152,7 @@ def from_project(content):
                 raise ValueError("项目解压体积过大。")
             if len({i.filename for i in infos}) != len(infos) or set(z.namelist()) != {"manifest.json", "record.json"}:
                 raise ValueError("项目包应包含 manifest.json 和 record.json。")
-            manifest = json.loads(z.read("manifest.json"))
+            manifest = object_value(json.loads(z.read("manifest.json")), '项目清单')
             raw = z.read("record.json")
             if manifest.get("format") != "ecg-workbench" or manifest.get("version") != 1:
                 raise ValueError("不支持此项目格式版本。")
@@ -118,17 +164,19 @@ def from_project(content):
                 raise ValueError("项目标注列表无效。")
             ids = set()
             for a in annotations:
+                object_value(a, '个人标注')
                 if a.get("kind") not in ("point", "interval") or not isinstance(a.get("id"), str) or a["id"] in ids:
                     raise ValueError("项目标注类型或编号无效。")
                 ids.add(a["id"])
-                if not isinstance(a.get("channel"), int) or not 0 <= a["channel"] < len(record["channels"]):
+                if not integer_value(a.get("channel")) or not 0 <= a["channel"] < len(record["channels"]):
                     raise ValueError("标注通道无效。")
-                if not isinstance(a.get("start"), int) or not 0 <= a["start"] < record["sampleCount"]:
+                if not integer_value(a.get("start")) or not 0 <= a["start"] < record["sampleCount"]:
                     raise ValueError("标注起点越界。")
-                if a["kind"] == "interval" and (not isinstance(a.get("end"), int) or not a["start"] < a["end"] <= record["sampleCount"]):
+                if a["kind"] == "interval" and (not integer_value(a.get("end")) or not a["start"] < a["end"] <= record["sampleCount"]):
                     raise ValueError("区间终点无效。")
                 if not isinstance(a.get("label"), str) or len(a["label"]) > 80 or not isinstance(a.get("note", ""), str) or len(a.get("note", "")) > 4000:
                     raise ValueError("标注文字无效或过长。")
+                a.setdefault('note', '')
             settings = manifest.get("settings", {})
             if not isinstance(settings, dict):
                 raise ValueError("滤波参数无效。")

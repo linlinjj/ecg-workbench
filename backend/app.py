@@ -1,5 +1,6 @@
 import importlib.util
 import math
+import json
 import tempfile
 from pathlib import Path
 
@@ -13,12 +14,13 @@ ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("ecg_dsp", ROOT / "public/python/dsp.py")
 dsp = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(dsp)
-app = FastAPI(title="ECG Workbench 本地接口", docs_url="/api/docs", openapi_url="/api/openapi.json")
+VERSION = json.loads((ROOT / 'package.json').read_text(encoding='utf8'))['version']
+app = FastAPI(version=VERSION, title="ECG Workbench 本地接口", docs_url="/api/docs", openapi_url="/api/openapi.json")
 
 
 @app.get("/api/health")
 def health():
-    return {"mode": "local", "version": "0.1.0"}
+    return {"mode": "local", "version": VERSION}
 
 
 class FilterRequest(BaseModel):

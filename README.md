@@ -2,9 +2,9 @@
 
 **观察波形，比较处理效果，记录你的发现。** 面向学习者与初学研究者的开源心电分析与标注工具。
 
-[English](README.en.md) · [在线示例](https://linlinjj.github.io/ecg-workbench/) · [学习路线](docs/学习路线.md) · [格式与算法](docs/格式与算法.md) · [验收记录](docs/验收记录.md)
+[English](README.en.md) · [在线示例](https://linlinjj.github.io/ecg-workbench/) · [学习路线](docs/学习路线.md) · [格式与算法](docs/格式与算法.md) · [v0.1.1 验收记录](docs/v0.1.1验收记录.md)
 
-> 在线地址仅在 GitHub Pages 部署成功后可用；实际发布状态见验收记录。
+当前预览版 **v0.1.1** 修复项目恢复校验、区间边界和异步保存／加载状态问题；项目包格式保持版本 1。首版验收记录保留在 [v0.1.0 记录](docs/验收记录.md)。
 
 ## 可以做什么
 

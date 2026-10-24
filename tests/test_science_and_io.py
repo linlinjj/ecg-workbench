@@ -109,3 +109,40 @@ def test_api_import_and_filter_errors():
 def test_wfdb_header_cannot_read_outside_upload(tmp_path):
     (tmp_path/'bad.hea').write_text('bad 1 360 100\n../secret.dat 16 200/mV 16 0 0 0 0 ECG\n')
     with pytest.raises(ValueError): from_wfdb(tmp_path,'bad.hea')
+
+
+def modified_project(change):
+    with zipfile.ZipFile(ROOT/'.verification/roundtrip.ecgwork') as z:
+        manifest=json.loads(z.read('manifest.json'))
+        record=json.loads(z.read('record.json'))
+    change(record,manifest)
+    raw=json.dumps(record).encode()
+    manifest['recordSha256']=hashlib.sha256(raw).hexdigest()
+    output=io.BytesIO()
+    with zipfile.ZipFile(output,'w') as z:
+        z.writestr('manifest.json',json.dumps(manifest));z.writestr('record.json',raw)
+    return output.getvalue()
+
+
+@pytest.mark.parametrize('change',[
+    lambda r,m:r.pop('provenance'),
+    lambda r,m:r.update(name={'invalid':'object'}),
+    lambda r,m:r['channels'][0].update(name={'invalid':'object'}),
+    lambda r,m:r['channels'][0].update(unit={'invalid':'object'}),
+    lambda r,m:r['reference'][0].update(symbol={'invalid':'object'}),
+    lambda r,m:r['reference'][0].update(sample=True),
+    lambda r,m:r['reference'].append(copy.deepcopy(r['reference'][0])),
+    lambda r,m:r['provenance'].update(offsetSamples=True),
+    lambda r,m:m['annotations'][0].update(start=True),
+    lambda r,m:m['annotations'][0].update(channel=True),
+])
+def test_project_schema_rejects_malformed_metadata(change):
+    payload=modified_project(change)
+    with pytest.raises(ValueError):from_project(payload)
+    response=client.post('/api/import',files={'files':('invalid.ecgwork',payload,'application/zip')})
+    assert response.status_code==400
+
+
+def test_project_missing_reference_is_normalized():
+    restored=from_project(modified_project(lambda r,m:r.pop('reference')))
+    assert restored['record']['reference']==[]

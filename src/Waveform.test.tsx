@@ -44,4 +44,38 @@ describe('waveform pointer logic (simulated DOM, not browser rendering)',()=>{
   it('pointer cancellation discards a pending interval',()=>{
     const {svg,onAdd}=mount({mode:'interval'});fireEvent.pointerDown(svg,{button:0,clientX:100});fireEvent.pointerMove(svg,{clientX:400});fireEvent.pointerCancel(svg);fireEvent.pointerUp(svg,{clientX:400});expect(onAdd).not.toHaveBeenCalled();
   });
+  it('translates an interval to either boundary without changing its length',()=>{
+    const annotation:Annotation={id:'a',kind:'interval',channel:0,start:200,end:600,label:'噪声',note:''};
+    const {svg,onMove}=mount({annotations:[annotation]});
+    fireEvent.pointerDown(svg.querySelector('rect')!,{button:0,clientX:280});
+    fireEvent.pointerMove(svg,{clientX:0});fireEvent.pointerUp(svg,{clientX:0});
+    expect(onMove).toHaveBeenLastCalledWith('a',0,400);
+    fireEvent.pointerDown(svg.querySelector('rect')!,{button:0,clientX:280});
+    fireEvent.pointerMove(svg,{clientX:700});fireEvent.pointerUp(svg,{clientX:700});
+    expect(onMove).toHaveBeenLastCalledWith('a',600,1000);
+  });
+  it('commits the final pointer position, including the exclusive record endpoint',()=>{
+    const annotation:Annotation={id:'a',kind:'interval',channel:0,start:200,end:600,label:'噪声',note:''};
+    const {svg,onMove}=mount({annotations:[annotation]});
+    fireEvent.pointerDown(svg.querySelector('[data-edge="end"]')!,{button:0,clientX:420});
+    fireEvent.pointerMove(svg,{clientX:490});fireEvent.pointerUp(svg,{clientX:700});
+    expect(onMove).toHaveBeenLastCalledWith('a',200,1000);
+  });
+  it('supports a one-sample interval and clamps the last point to N-1',()=>{
+    const annotation:Annotation={id:'a',kind:'interval',channel:0,start:200,end:600,label:'噪声',note:''};
+    const first=mount({annotations:[annotation]});
+    fireEvent.pointerDown(first.svg.querySelector('[data-edge="start"]')!,{button:0,clientX:140});
+    fireEvent.pointerUp(first.svg,{clientX:700});
+    expect(first.onMove).toHaveBeenLastCalledWith('a',599,600);
+    cleanup();const second=mount({mode:'point'});
+    fireEvent.pointerDown(second.svg,{button:0,clientX:700});fireEvent.pointerUp(second.svg,{clientX:700});
+    expect(second.onAdd).toHaveBeenCalledWith(999);
+  });
+  it('reaches the endpoint even when grabbed off-center and dragged beyond the plot',()=>{
+    const annotation:Annotation={id:'a',kind:'interval',channel:0,start:200,end:600,label:'噪声',note:''};
+    const {svg,onMove}=mount({annotations:[annotation]});
+    fireEvent.pointerDown(svg.querySelector('[data-edge="end"]')!,{button:0,clientX:421});
+    fireEvent.pointerUp(svg,{clientX:730});
+    expect(onMove).toHaveBeenLastCalledWith('a',200,1000);
+  });
 });

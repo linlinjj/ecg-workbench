@@ -4,7 +4,9 @@
 
 [中文](README.md) · [Online demo](https://linlinjj.github.io/ecg-workbench/) · [Source](https://github.com/linlinjj/ecg-workbench)
 
-A Chinese-first ECG exploration workbench for learners and early-stage researchers. The browser demo works with attributed public clips; the local edition imports your own data. See the Chinese acceptance report for the actual deployment and verification status.
+A Chinese-first ECG exploration workbench for learners and early-stage researchers. The browser demo works with attributed public clips; the local edition imports your own data. See the [v0.1.1 acceptance report](docs/v0.1.1验收记录.md) for the actual deployment and verification status.
+
+Preview v0.1.1 fixes project schema validation, interval boundaries and asynchronous save/load races while retaining project format version 1. Actual in-app browser import, dragging, export/reopen and PNG checks are covered; standalone Chrome/Edge compatibility and interrupted cold-start behavior still need separate verification.
 
 ## Features
 
