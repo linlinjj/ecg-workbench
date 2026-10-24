@@ -1,5 +1,13 @@
 import { zipSync, strToU8 } from 'fflate';
 import type { Annotation, ECGRecord, Filters } from './types';
+export function amplitudeRange(min:number,max:number):[number,number] {
+  if(!Number.isFinite(min)||!Number.isFinite(max))return[-1,1];
+  const pad=Math.max((max-min)*.15,Math.max(Math.abs(min),Math.abs(max))*.03,min===0&&max===0?.01:1e-12);
+  return[min-pad,max+pad];
+}
+export function formatAmplitude(value:number){
+  return value!==0&&(Math.abs(value)<.01||Math.abs(value)>=1000)?value.toExponential(2):value.toFixed(3);
+}
 export function csvAnnotations(record: ECGRecord, annotations: Annotation[]) {
   const escape = (value: unknown) => {
     let s = String(value ?? '');

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import uPlot from 'uplot';
 import 'uplot/dist/uPlot.min.css';
-import { envelope } from './project';
+import { amplitudeRange, envelope, formatAmplitude } from './project';
 import type { Annotation, ECGRecord, Mode } from './types';
 
 interface Props { record: ECGRecord; channel: number; processed: number[] | null; view: [number,number]; mode: Mode; annotations: Annotation[]; selected: string | null; showReference: boolean; filterDescription?: string; onView: (v:[number,number])=>void; onAdd:(start:number,end?:number)=>void; onMove:(id:string,start:number,end?:number)=>void; onSelect:(id:string)=>void; onExportReady:(fn:()=>void)=>void }
@@ -18,10 +18,10 @@ export default function Waveform(props: Props) {
     const updateBox = (u:uPlot) => { const ratio = window.devicePixelRatio || 1; setBox({ left:u.bbox.left/ratio, top:u.bbox.top/ratio, width:u.bbox.width/ratio, height:u.bbox.height/ratio }); };
     const u = new uPlot({ width: root.current.clientWidth, height: 364, padding:[18,18,0,0],
       cursor:{ show:false }, legend:{show:false}, select:{show:false,left:0,top:0,width:0,height:0},
-      scales:{x:{time:false},y:{auto:true,range:(_u,min,max)=>{const pad=Math.max(.08,(max-min)*.15);return[min-pad,max+pad];}}},
+      scales:{x:{time:false},y:{auto:true,range:(_u,min,max)=>amplitudeRange(min,max)}},
       series:[{},{label:'原始信号',stroke:'#58cfca',width:1.4},{label:'处理后',stroke:'#ad9cff',width:1.65}],
       axes:[{stroke:'#7f91ac',grid:{stroke:'#20304a',width:1},ticks:{show:false},size:38,gap:10,values:(_u,values)=>values.map(v=>`${v.toFixed(v<10?1:0)} s`),font:'11px Arial'},
-            {stroke:'#7f91ac',grid:{stroke:'#20304a',width:1},ticks:{show:false},size:56,gap:10,font:'11px Arial',values:(_u,values)=>values.map(v=>v.toFixed(2))}],
+            {stroke:'#7f91ac',grid:{stroke:'#20304a',width:1},ticks:{show:false},size:56,gap:10,font:'11px Arial',values:(_u,values)=>values.map(formatAmplitude)}],
       hooks:{ready:[updateBox],setSize:[updateBox]} }, [[],[],[]], root.current);
     plot.current=u;
     const resize=new ResizeObserver(()=>{if(root.current && root.current.clientWidth>0)u.setSize({width:root.current.clientWidth,height:364});}); resize.observe(root.current);
@@ -72,6 +72,6 @@ export default function Waveform(props: Props) {
       {preview&&<rect className="selection-preview" x={toX(preview[0])} y={0} width={Math.max(2,toX(preview[1])-toX(preview[0]))} height={box.height}/>}
       {cursor!==null&&!drag.current&&<line className="cursor-line" x1={toX(cursor)} x2={toX(cursor)} y1={0} y2={box.height}/>}
     </svg>
-    <div className="cursor-readout">{cursor===null?'移动鼠标查看采样值':`${(cursor/props.record.fs).toFixed(3)} s · ${raw[cursor]?.toFixed(3)} ${props.record.channels[props.channel].unit} · #${cursor}`}</div>
+    <div className="cursor-readout">{cursor===null?'移动鼠标查看采样值':`${(cursor/props.record.fs).toFixed(3)} s · ${formatAmplitude(raw[cursor])} ${props.record.channels[props.channel].unit} · #${cursor}`}</div>
   </div>;
 }

@@ -1,12 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { unzipSync, strFromU8 } from 'fflate';
-import { csvAnnotations, envelope, limitView, projectBlob } from './project';
+import { amplitudeRange, formatAmplitude, csvAnnotations, envelope, limitView, projectBlob } from './project';
 import { RAW, type ECGRecord, type Annotation } from './types';
 
 const record:ECGRecord=JSON.parse(readFileSync('public/samples/100.json','utf8'));
 const annotations:Annotation[]=[{id:'point-one',kind:'point',channel:0,start:360,label:'待确认',note:'=SUM(A1:A2)'},{id:'interval-one',kind:'interval',channel:1,start:720,end:1440,label:'待复看',note:'中文,逗号与"引号"'}];
 describe('display and portable data integrity',()=>{
+  it('keeps volt-scale traces visible and tiny axis values distinguishable',()=>{
+    const [min,max]=amplitudeRange(-.0005,.001);
+    expect(max-min).toBeLessThan(.003);expect(min).toBeLessThan(-.0005);expect(max).toBeGreaterThan(.001);
+    expect(formatAmplitude(.000001)).toBe('1.00e-6');expect(formatAmplitude(.000002)).not.toBe(formatAmplitude(.000001));
+    expect(amplitudeRange(0,0).every(Number.isFinite)).toBe(true);
+  });
   it('clips views without moving their span or crossing record bounds',()=>{
     expect(limitView([-300,600],1000)).toEqual([0,900]);
     expect(limitView([800,1400],1000)).toEqual([400,1000]);
