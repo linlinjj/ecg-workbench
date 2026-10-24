@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.venv/
+__pycache__/
+.pytest_cache/
+.cache/
+.verification/
+artifacts/
+*.log
+*.tsbuildinfo
+*.ecgwork
+data/private/
+.env
+.env.*
+!.env.example
