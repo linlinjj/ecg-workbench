@@ -6,7 +6,9 @@
 
 A Chinese-first ECG exploration workbench for learners and early-stage researchers. The browser demo works with attributed public clips; the local edition imports your own data. See the [v0.1.1 acceptance report](docs/v0.1.1验收记录.md) for the actual deployment and verification status.
 
-Preview v0.1.1 fixes project schema validation, interval boundaries and asynchronous save/load races while retaining project format version 1. Actual in-app browser import, dragging, export/reopen and PNG checks are covered; standalone Chrome/Edge compatibility and interrupted cold-start behavior still need separate verification.
+UI iteration v0.1.2 improves text contrast and hierarchy, mobile navigation, toolbar reachability and annotation label layout. It retains the v0.1.1 recovery and state fixes and project format version 1. See the [UI verification report](docs/v0.1.2界面检查.md). Standalone Chrome/Edge compatibility and interrupted cold-start behavior still need separate verification.
+
+![Desktop UI with public MIT-BIH data and manual test annotations](docs/images/workbench-v0.1.2.png)
 
 ## Features
 

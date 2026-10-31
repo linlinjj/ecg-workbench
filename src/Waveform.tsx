@@ -3,7 +3,7 @@ import uPlot from 'uplot';
 import 'uplot/dist/uPlot.min.css';
 import { amplitudeRange, envelope, formatAmplitude } from './project';
 import type { Annotation, ECGRecord, Mode } from './types';
-import { boundarySample, sampleX, translatedAnnotation } from './geometry';
+import { annotationLabels, boundarySample, sampleX, translatedAnnotation } from './geometry';
 
 interface Props { record: ECGRecord; channel: number; processed: number[] | null; view: [number,number]; mode: Mode; annotations: Annotation[]; selected: string | null; showReference: boolean; disabled?:boolean; filterDescription?: string; onView: (v:[number,number])=>void; onAdd:(start:number,end?:number)=>void; onMove:(id:string,start:number,end?:number)=>void; onSelect:(id:string)=>void; onExportReady:(fn:()=>void)=>void }
 export default function Waveform(props: Props) {
@@ -18,15 +18,15 @@ export default function Waveform(props: Props) {
   useEffect(() => {
     if (!root.current) return;
     const updateBox = (u:uPlot) => { const ratio = window.devicePixelRatio || 1; setBox({ left:u.bbox.left/ratio, top:u.bbox.top/ratio, width:u.bbox.width/ratio, height:u.bbox.height/ratio }); };
-    const u = new uPlot({ width: root.current.clientWidth, height: 364, padding:[18,18,0,0],
+    const u = new uPlot({ width: root.current.clientWidth, height: root.current.clientHeight || 340, padding:[18,18,0,0],
       cursor:{ show:false }, legend:{show:false}, select:{show:false,left:0,top:0,width:0,height:0},
       scales:{x:{time:false},y:{auto:true,range:(_u,min,max)=>amplitudeRange(min,max)}},
       series:[{},{label:'原始信号',stroke:'#58cfca',width:1.4},{label:'处理后',stroke:'#ad9cff',width:1.65}],
-      axes:[{stroke:'#7f91ac',grid:{stroke:'#20304a',width:1},ticks:{show:false},size:38,gap:10,values:(_u,values)=>values.map(v=>`${v.toFixed(v<10?1:0)} s`),font:'11px Arial'},
-            {stroke:'#7f91ac',grid:{stroke:'#20304a',width:1},ticks:{show:false},size:56,gap:10,font:'11px Arial',values:(_u,values)=>values.map(formatAmplitude)}],
+      axes:[{stroke:'#a5b8cb',grid:{stroke:'#20304a',width:1},ticks:{show:false},size:38,gap:10,values:(_u,values)=>values.map(v=>`${v.toFixed(v<10?1:0)} s`),font:'11px Arial'},
+            {stroke:'#a5b8cb',grid:{stroke:'#20304a',width:1},ticks:{show:false},size:56,gap:10,font:'11px Arial',values:(_u,values)=>values.map(formatAmplitude)}],
       hooks:{ready:[updateBox],setSize:[updateBox]} }, [[],[],[]], root.current);
     plot.current=u;
-    const resize=new ResizeObserver(()=>{if(root.current && root.current.clientWidth>0)u.setSize({width:root.current.clientWidth,height:364});}); resize.observe(root.current);
+    const resize=new ResizeObserver(()=>{if(root.current && root.current.clientWidth>0)u.setSize({width:root.current.clientWidth,height:root.current.clientHeight || 340});}); resize.observe(root.current);
     return()=>{resize.disconnect();u.destroy();plot.current=null;};
   },[]);
   useEffect(()=>{
@@ -66,6 +66,7 @@ export default function Waveform(props: Props) {
     });
   },[props.record,props.channel,props.annotations,props.showReference]);
   const visible=props.annotations.filter(a=>a.channel===props.channel && (a.end??a.start)>=props.view[0] && a.start<props.view[1]);
+  const labels=annotationLabels(visible,props.view,box.width,props.selected);
   return <div className="wave-chart" data-testid="wave-chart">
     <div ref={root} className="uplot-host"/>
     <svg className={`wave-overlay ${props.mode}`} style={{left:box.left,top:box.top,width:box.width,height:box.height}} viewBox={`0 0 ${box.width} ${box.height}`}
@@ -98,8 +99,9 @@ export default function Waveform(props: Props) {
       onPointerCancel={()=>{drag.current=undefined;setPreview(null);}} onPointerLeave={()=>{if(!drag.current)setCursor(null);}}>
       {props.showReference&&props.record.reference.filter(a=>a.sample>=props.view[0]&&a.sample<props.view[1]).map(a=><g key={a.id} className="reference-mark"><line x1={toX(a.sample)} x2={toX(a.sample)} y1={box.height-31} y2={box.height-21}/><text x={toX(a.sample)} y={box.height-7} textAnchor="middle">{a.symbol}</text></g>)}
       {visible.map(a=><g key={a.id} data-annotation={a.id} className={`annotation-mark ${props.selected===a.id?'selected':''}`}>
+        <title>{a.label}</title>
         {a.kind==='interval'?<><rect x={toX(a.start)} y={2} width={Math.max(1,toX(a.end!)-toX(a.start))} height={box.height-4}/><line data-annotation={a.id} data-edge="start" className="drag-line" x1={toX(a.start)} x2={toX(a.start)} y1={0} y2={box.height}/><line data-annotation={a.id} data-edge="end" className="drag-line" x1={toX(a.end!)} x2={toX(a.end!)} y1={0} y2={box.height}/></>:<><line x1={toX(a.start)} x2={toX(a.start)} y1={30} y2={box.height-34}/><circle cx={toX(a.start)} cy={16} r={7}/><line className="drag-line" x1={toX(a.start)} x2={toX(a.start)} y1={0} y2={box.height}/></>}
-        <text x={toX(a.start)+10} y={20}>{a.label}</text>
+        {labels.has(a.id)&&<text x={labels.get(a.id)!.x} y={labels.get(a.id)!.y}>{labels.get(a.id)!.text}</text>}
       </g>)}
       {preview&&<rect className="selection-preview" x={toX(preview[0])} y={0} width={Math.max(2,toX(preview[1])-toX(preview[0]))} height={box.height}/>}
       {cursor!==null&&!drag.current&&<line className="cursor-line" x1={toX(cursor)} x2={toX(cursor)} y1={0} y2={box.height}/>}

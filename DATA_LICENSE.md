@@ -19,5 +19,6 @@ IEEE Engineering in Medicine and Biology 20(3):45–50 (2001).
 - All clip values are rounded to six decimal places. Record identity, sampling rate, original annotation symbols, clip offset and input file hashes are retained in `provenance`.
 - Original reference annotations are not predictions. The noisy example reuses the source annotations; its noisy waveform has not been re-reviewed by experts.
 - The CSV template is the first five seconds of record 100, first channel; use fs=360 Hz, unit=mV.
+- Screenshots in `docs/images/` show these attributed public clips with manual UI-test annotations. These annotations are interface examples, not expert ground truth or diagnostic conclusions.
 
 Do not represent the synthetic interference as naturally acquired patient noise. When redistributing derived data, preserve attribution, license links and transformation notes. Original project code is separately MIT licensed.
